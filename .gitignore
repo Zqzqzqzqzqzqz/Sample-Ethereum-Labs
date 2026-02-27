@@ -1,0 +1,21 @@
+# Go
+bin/
+pkg/
+src/
+.gocache/
+*.exe
+
+# Python
+.venv/
+__pycache__/
+
+# OS
+.DS_Store
+._*
+
+# Lab specific
+test.md
+answer.md
+*轻量包.zip
+tmp/
+MyAgent/
