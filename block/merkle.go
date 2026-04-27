@@ -53,17 +53,16 @@ func NewMerkleTree(data [][]byte) *MerkleTree {
 
 	// 自底向上构建树，合并
 	for len(nodes) > 1 {
-		// Pad odd level by duplicating the last node.
 		if len(nodes)%2 == 1 {
-			nodes = append(nodes, duplicateNode(nodes[len(nodes)-1]))
+			nodes = append(nodes, duplicateNode(nodes[len(nodes)-1])) //如果节点数为奇数，复制最后一个节点以保持完全二叉树结构
 		}
 		level := make([]*MerkleNode, 0, len(nodes)/2)
-		for i := 0; i < len(nodes); i += 2 {
+		for i := 0; i < len(nodes); i += 2 { 
 			left := nodes[i]
 			right := nodes[i+1]
 			left.isLeft = true
 			right.isLeft = false
-			combined := append(left.Data, right.Data...)
+			combined := append(left.Data, right.Data...) //左右节点的哈希值拼接后再哈希得到父节点的哈希值
 			h := sha256.Sum256(combined)
 			parent := &MerkleNode{Left: left, Right: right, Data: h[:]}
 			left.Parent = parent
@@ -99,7 +98,7 @@ func (t *MerkleTree) SPVProof(index int) ([]ProofStep, error) {
 			sibling = parent.Left
 			siblingOnLeft = true
 		}
-		path = append(path, ProofStep{Hash: sibling.Data, SiblingOnLeft: siblingOnLeft})
+		path = append(path, ProofStep{Hash: sibling.Data, SiblingOnLeft: siblingOnLeft}) 
 		current = parent
 	}
 	return path, nil
