@@ -54,8 +54,37 @@ func GeneratePublicKey(secKey *big.Int) *Point {
 }
 
 func (ecc *MyECC) Sign(msg []byte, secKey *big.Int) (*Signature, error) {
-	// TODO: Lab 1, calculate coordinates (r,s) with private key to construct ECDSA signature.
-	panic("Not implemented yet")
+	z := hashMessage(msg)
+	k, err := NewPrivateKey()
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate k: %w", err)
+	}
+
+	// R = kG， r = R.x mod N
+	R := Multi(G, k)
+	r := new(big.Int).Mod(R.X, N)
+
+	// s = (z + r * e) / k mod N
+	// k 的逆元 (k^-1 mod N)
+	k_Inv := new(big.Int).ModInverse(k, N)
+
+	//  r * e mod N
+	re := new(big.Int).Mul(r, secKey)
+	re.Mod(re, N)
+
+	// z + re mod N
+	z_Plus_re := new(big.Int).Add(z, re)
+	z_Plus_re.Mod(z_Plus_re, N)
+
+	// s = (z + re) * k^-1 mod N
+	s := new(big.Int).Mul(z_Plus_re, k_Inv)
+	s.Mod(s, N)
+
+	return &Signature{
+		s: s,
+		r: r,
+	}, nil
 }
 
 // >>> point = S256Point(px, py)
@@ -65,7 +94,31 @@ func (ecc *MyECC) Sign(msg []byte, secKey *big.Int) (*Signature, error) {
 // >>> print((u*G + v*point).x.num == r)
 func (ecc *MyECC) VerifySignature(msg []byte, signature *Signature, pubkey *Point) bool {
 	// TODO: Lab 1, verify signature authenticity by inferring uG + vP = R with public key.
-	panic("Not implemented yet")
+	z := hashMessage(msg)
+	r := signature.r
+	s := signature.s
+	if r.Sign() <= 0 || r.Cmp(N) >= 0 || s.Sign() <= 0 || s.Cmp(N) >= 0 { //check r and s are in the range [1, N-1]
+		return false
+	}
+	//  s_inv = s^-1 mod N
+	sInv := new(big.Int).ModInverse(s, N)
+	// u = z * s^-1 mod N
+	u := new(big.Int).Mul(z, sInv)
+	u.Mod(u, N)
+	// v = r * s^-1 mod N
+	v := new(big.Int).Mul(r, sInv)
+	v.Mod(v, N)
+
+	// R' = uG + vP
+	uG := Multi(G, u)
+	vP := Multi(pubkey, v)
+	Rx, _ := s256.Add(uG.X, uG.Y, vP.X, vP.Y)
+	if Rx == nil {. //验证失败
+		return false
+	}
+
+	RxMod := new(big.Int).Mod(Rx, N)
+	return RxMod.Cmp(r) == 0  //如果 Rx mod N == r，则验证成功
 }
 
 func hashMessage(msg []byte) *big.Int {
