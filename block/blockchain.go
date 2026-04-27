@@ -88,7 +88,21 @@ func NewBlockchain(engine ConsensusEngine, accounts []*types.Account) *Blockchai
 
 func (bc *Blockchain) MineBlock(state types.State) *Block {
 	// TODO: Lab 2, assemble new block by executing valid txs from pool and linking headers.
-	panic("Not implemented yet")
+	txs := bc.TransactionPool.GetTransactions() // 获取交易池中的交易
+	if len(txs) == 0 {
+		return nil
+	}
+
+	// 验证交易的有效性
+	cloned := state.Clone()
+	if err := types.ValidateTransactions(txs, cloned); err != nil {
+		return nil
+	}
+
+	blockCandidate := bc.buildBlockTemplate(txs, cloned)
+	sealed := bc.Engine.ConstructConsensus(blockCandidate)
+	bc.TransactionPool.ClearTransactions()
+	return sealed
 }
 
 // ValidateBlock acts as a validating node to verify a received block and append it to the chain.

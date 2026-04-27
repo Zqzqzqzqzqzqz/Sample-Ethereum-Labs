@@ -6,6 +6,8 @@ import (
 	"encoding/hex"
 	"math"
 	"sort"
+	"fmt"
+	"crypto/sha256"
 
 	"simple_eth/types"
 
@@ -36,19 +38,89 @@ type MerkleNode struct {
 // NewMerkleTree builds a Merkle tree from arbitrary byte slices.
 func NewMerkleTree(data [][]byte) *MerkleTree {
 	// TODO: Lab 2, build Merkle tree bottom-up by hashing pairs.
-	panic("Not implemented yet")
+	if len(data) == 0 {
+		return nil
+	}
+
+	//建立叶子节点
+	nodes := make([]*MerkleNode, len(data))
+	for i, d := range data {
+		h := sha256.Sum256(d)
+		nodes[i] = &MerkleNode{Data: h[:]}
+	}
+	leaves := make([]*MerkleNode, len(nodes))
+	copy(leaves, nodes)
+
+	// 自底向上构建树，合并
+	for len(nodes) > 1 {
+		// Pad odd level by duplicating the last node.
+		if len(nodes)%2 == 1 {
+			nodes = append(nodes, duplicateNode(nodes[len(nodes)-1]))
+		}
+		level := make([]*MerkleNode, 0, len(nodes)/2)
+		for i := 0; i < len(nodes); i += 2 {
+			left := nodes[i]
+			right := nodes[i+1]
+			left.isLeft = true
+			right.isLeft = false
+			combined := append(left.Data, right.Data...)
+			h := sha256.Sum256(combined)
+			parent := &MerkleNode{Left: left, Right: right, Data: h[:]}
+			left.Parent = parent
+			right.Parent = parent
+			level = append(level, parent)
+		}
+		nodes = level
+	}
+
+	return &MerkleTree{Root: nodes[0], leaves: leaves}
 }
 
 // SPVProof returns the Merkle path for the leaf at index.
 func (t *MerkleTree) SPVProof(index int) ([]ProofStep, error) {
 	// TODO: Lab 2, provide bottom-up sibling hashes for SPV proof.
-	panic("Not implemented yet")
+	if t == nil || t.Root == nil { //空树
+		return nil, fmt.Errorf("empty tree")
+	}
+	if index < 0 || index >= len(t.leaves) {
+		return nil, fmt.Errorf("index %d out of range (leaves: %d)", index, len(t.leaves))
+	}
+
+	var path []ProofStep
+	current := t.leaves[index]
+	for current.Parent != nil { //从叶子节点向上遍历到根节点
+		parent := current.Parent
+		var sibling *MerkleNode
+		var siblingOnLeft bool
+		if current.isLeft { //如果当前节点是左子节点，则兄弟节点在右边
+			sibling = parent.Right
+			siblingOnLeft = false
+		} else {
+			sibling = parent.Left
+			siblingOnLeft = true
+		}
+		path = append(path, ProofStep{Hash: sibling.Data, SiblingOnLeft: siblingOnLeft})
+		current = parent
+	}
+	return path, nil
 }
 
 // VerifyProof verifies an SPV proof against the expected root.
 func VerifyProof(leaf []byte, path []ProofStep, expectedRoot []byte) bool {
 	// TODO: Lab 2, verify SPV computed root against expected root.
-	panic("Not implemented yet")
+	h := sha256.Sum256(leaf)
+	current := h[:]
+	for _, step := range path { //遍历SPV路径，逐步计算当前节点的哈希值
+		var combined []byte
+		if step.SiblingOnLeft {
+			combined = append(step.Hash, current...)
+		} else {
+			combined = append(current, step.Hash...)
+		}
+		h := sha256.Sum256(combined)
+		current = h[:]
+	}
+	return bytes.Equal(current, expectedRoot)
 }
 
 // CalculateMerkleRoot hashes all transactions and returns the root hex string.

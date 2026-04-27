@@ -117,7 +117,33 @@ func ValidateTransaction(tx *Transaction) error {
 // ValidateTransactions validates and applies a batch of transactions against state.
 func ValidateTransactions(txs []*Transaction, state State) error {
 	// TODO: Lab 2, execute sandbox validation on current state to intercept nonce, overdraft, or signature errors.
-	panic("Not implemented yet")
+	seen := make(map[string]struct{}, len(txs))
+	for _, tx := range txs {
+		if err := ValidateTransaction(tx); err != nil {
+			return err
+		}
+		if _, dup := seen[tx.Hash]; dup {
+			return fmt.Errorf("重复交易: %s", tx.Hash)
+		}
+		seen[tx.Hash] = struct{}{}
+
+		sender := state[tx.From]
+		if sender == nil {
+			return fmt.Errorf("发送方账户不存在: %s", tx.From.Hex())
+		}
+		if sender.Balance < tx.Amount {
+			return fmt.Errorf("余额不足: %s (余额 %v, 需要 %v)", tx.From.Hex(), sender.Balance, tx.Amount)
+		}
+		receiver := state[tx.To]
+		if receiver == nil {
+			return fmt.Errorf("接收方账户不存在: %s", tx.To.Hex())
+		}
+
+		sender.Balance -= tx.Amount
+		receiver.Balance += tx.Amount
+		sender.Nonce++
+	}
+	return nil
 }
 
 func (tx *Transaction) sign(priv *big.Int) error {
