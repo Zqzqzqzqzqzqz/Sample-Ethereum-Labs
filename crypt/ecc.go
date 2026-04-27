@@ -113,12 +113,12 @@ func (ecc *MyECC) VerifySignature(msg []byte, signature *Signature, pubkey *Poin
 	uG := Multi(G, u)
 	vP := Multi(pubkey, v)
 	Rx, _ := s256.Add(uG.X, uG.Y, vP.X, vP.Y)
-	if Rx == nil {. //验证失败
+	if Rx == nil { //验证失败
 		return false
 	}
-
 	RxMod := new(big.Int).Mod(Rx, N)
 	return RxMod.Cmp(r) == 0  //如果 Rx mod N == r，则验证成功
+
 }
 
 func hashMessage(msg []byte) *big.Int {
