@@ -122,7 +122,7 @@ func ValidateTransactions(txs []*Transaction, state State) error {
 		if err := ValidateTransaction(tx); err != nil {
 			return err
 		}
-		if _, dup := seen[tx.Hash]; dup {
+		if _, dup := seen[tx.Hash]; dup { //检测重复交易
 			return fmt.Errorf("重复交易: %s", tx.Hash)
 		}
 		seen[tx.Hash] = struct{}{}
@@ -138,7 +138,7 @@ func ValidateTransactions(txs []*Transaction, state State) error {
 		if receiver == nil {
 			return fmt.Errorf("接收方账户不存在: %s", tx.To.Hex())
 		}
-
+		// 更新
 		sender.Balance -= tx.Amount
 		receiver.Balance += tx.Amount
 		sender.Nonce++
