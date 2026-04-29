@@ -65,7 +65,19 @@ func (e *PoSEngine) ConstructConsensus(blockCandidate *block.Block) *block.Block
 	}
 
 	// TODO: Lab 3, combine seed generation, shuffling, and proposer selection for PoS block creation.
-	panic("Not implemented yet")
+	entries := e.snapshotValidators()
+	if len(entries) == 0 {
+		return nil
+	}
+
+	slot := computeSlot(blockCandidate.Header.Timestamp)
+	seed := generateSeed(blockCandidate.Header.PrevBlockHash, slot)
+	shuffled := shuffleValidators(entries, seed)
+	proposer := pickProposer(shuffled, seed)
+
+	blockCandidate.Header.Validator = proposer
+	blockCandidate.Header.Hash = calculatePoSHash(blockCandidate)
+	return blockCandidate
 }
 
 // ValidateConsensus verifies proposer selection and block hash.
@@ -142,19 +154,41 @@ func computeSlot(timestamp int64) int64 {
 // generateSeed generates seed (prev_hash + slot + "PROPOSER").
 func generateSeed(prevHash string, slot int64) []byte {
 	// TODO: Lab 3, deterministically generate a specific shuffle seed for the current slot to prevent fraud.
-	panic("Not implemented yet")
+	prevBytes, _ := hex.DecodeString(prevHash)
+	slotBytes := make([]byte, 8)
+	binary.BigEndian.PutUint64(slotBytes, uint64(slot))
+	combined := append(prevBytes, slotBytes...)
+	combined = append(combined, []byte("PROPOSER")...)
+	h := sha256.Sum256(combined)
+	return h[:]
 }
 
 // shuffleValidators performs deterministic shuffling using seed (Fisher-Yates).
 func shuffleValidators(entries []validatorEntry, seed []byte) []validatorEntry {
 	// TODO: Lab 3, establish a verifiable deterministic shuffling mechanism.
-	panic("Not implemented yet")
+	shuffled := make([]validatorEntry, len(entries))
+	copy(shuffled, entries)
+	for i := len(shuffled) - 1; i > 0; i-- {
+		r := hashUint64(seed, uint64(i), nil)
+		j := int(r % uint64(i+1))
+		shuffled[i], shuffled[j] = shuffled[j], shuffled[i]
+	}
+	return shuffled
 }
 
 // pickProposer selects a proposer based on effective stake using threshold sampling.
 func pickProposer(shuffled []validatorEntry, seed []byte) common.Address {
 	// TODO: Lab 3, select a valid proposer weighted by account stake to influence selection probability.
-	panic("Not implemented yet")
+	if len(shuffled) == 0 {
+		return common.Address{}
+	}
+	for i := 0; ; i++ {
+		entry := shuffled[i%len(shuffled)]
+		threshold := hashUint64(seed, uint64(i), []byte("THRESHOLD")) % uint64(maxEffectiveBalance)
+		if effectiveBalance(entry.Stake) > float64(threshold) {
+			return entry.Address
+		}
+	}
 }
 
 // effectiveBalance directly returns stake, 32 ETH limit is verified on addition.
