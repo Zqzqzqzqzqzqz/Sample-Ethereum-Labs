@@ -57,7 +57,7 @@ func (e *PoSEngine) ConstructConsensus(blockCandidate *block.Block) *block.Block
 	if blockCandidate == nil {
 		return nil
 	}
-	if blockCandidate.Header == nil {
+	if blockCandidate.Header == nil { 
 		blockCandidate.Header = &block.BlockHeader{}
 	}
 	if blockCandidate.Body == nil {
@@ -65,16 +65,16 @@ func (e *PoSEngine) ConstructConsensus(blockCandidate *block.Block) *block.Block
 	}
 
 	// TODO: Lab 3, combine seed generation, shuffling, and proposer selection for PoS block creation.
-	entries := e.snapshotValidators()
+	entries := e.snapshotValidators() // 获取当前验证者列表
 	if len(entries) == 0 {
 		return nil
 	}
-
-	slot := computeSlot(blockCandidate.Header.Timestamp)
-	seed := generateSeed(blockCandidate.Header.PrevBlockHash, slot)
+	// 生成种子并选出提议者
+	slot := computeSlot(blockCandidate.Header.Timestamp) 
+	seed := generateSeed(blockCandidate.Header.PrevBlockHash, slot) 
 	shuffled := shuffleValidators(entries, seed)
 	proposer := pickProposer(shuffled, seed)
-
+	// 填充区块头中的提议者和哈希
 	blockCandidate.Header.Validator = proposer
 	blockCandidate.Header.Hash = calculatePoSHash(blockCandidate)
 	return blockCandidate
@@ -166,12 +166,12 @@ func generateSeed(prevHash string, slot int64) []byte {
 // shuffleValidators performs deterministic shuffling using seed (Fisher-Yates).
 func shuffleValidators(entries []validatorEntry, seed []byte) []validatorEntry {
 	// TODO: Lab 3, establish a verifiable deterministic shuffling mechanism.
-	shuffled := make([]validatorEntry, len(entries))
+	shuffled := make([]validatorEntry, len(entries))	// 复制原始切片以避免修改
 	copy(shuffled, entries)
 	for i := len(shuffled) - 1; i > 0; i-- {
 		r := hashUint64(seed, uint64(i), nil)
 		j := int(r % uint64(i+1))
-		shuffled[i], shuffled[j] = shuffled[j], shuffled[i]
+		shuffled[i], shuffled[j] = shuffled[j], shuffled[i] // 交换元素
 	}
 	return shuffled
 }

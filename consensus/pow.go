@@ -53,7 +53,7 @@ func (e *PoWEngine) ConstructConsensus(blockCandidate *block.Block) *block.Block
 	nonce := 0
 	for {
 		hash := calculatePoWHash(blockCandidate, nonce)
-		if strings.HasPrefix(hash, targetPrefix) {
+		if strings.HasPrefix(hash, targetPrefix) {	// 找到满足条件的哈希
 			blockCandidate.Header.Nonce = nonce
 			blockCandidate.Header.Hash = hash
 			return blockCandidate
@@ -98,8 +98,8 @@ func calculatePoWHash(blockCandidate *block.Block, nonce int) string {
 	baseHash := calculateBlockBaseHash(blockCandidate)
 	payload := fmt.Sprintf("%s%d", baseHash, nonce)
 	first := sha256.Sum256([]byte(payload))
-	second := sha256.Sum256(first[:])
-	return hex.EncodeToString(second[:])
+	second := sha256.Sum256(first[:])	//两次哈希
+	return hex.EncodeToString(second[:])	// 计算最终哈希值
 }
 
 func calculateBlockBaseHash(blockCandidate *block.Block) string {
