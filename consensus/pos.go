@@ -159,7 +159,7 @@ func generateSeed(prevHash string, slot int64) []byte {
 	binary.BigEndian.PutUint64(slotBytes, uint64(slot))
 	combined := append(prevBytes, slotBytes...)
 	combined = append(combined, []byte("PROPOSER")...)
-	h := sha256.Sum256(combined)
+	h := sha256.Sum256(combined)  // 生成最终种子
 	return h[:]
 }
 
